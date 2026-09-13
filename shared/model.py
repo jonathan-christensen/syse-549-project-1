@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import List, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, SecretStr
 
 # Run
 class RunRequest(BaseModel):
@@ -17,7 +17,7 @@ class RunResponse(BaseModel):
 # Applicant
 class ApplicantRequest(BaseModel):
     email: str
-    plaintext: str
+    plaintext: SecretStr
 
 class ApplicantResponse(BaseModel):
     token: Optional[str] = None
@@ -30,10 +30,10 @@ class SubscriberResponse(BaseModel):
 # Verifier
 class VerifierRequest(BaseModel):
     email: str
-    plaintext: str
+    plaintext: SecretStr
 
 class VerifierResponse(BaseModel):
-    verified: bool
+    subscribed: bool
     message: str
 
 # Event

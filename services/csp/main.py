@@ -53,7 +53,9 @@ async def apply(body: ApplicantRequest):
     )
 
     try:
-        user_db.add_user(body.email, body.plaintext, token)
+        password = body.plaintext.get_secret_value()
+
+        user_db.add_user(body.email, password, token)
         email_service.send_activation(body.email, token)
         status_code = 200
         response.token = token
@@ -97,19 +99,19 @@ async def verify(body: VerifierRequest):
     status_code = 200
 
     response = VerifierResponse(
-        verified=False,
+        subscribed=False,
         message="failure"
     )
     
     try:
-        response.verified = user_db.verify(body.email, body.plaintext)
+        response.subscribed = user_db.verify(body.email, body.plaintext.get_secret_value())
 
-        if response.verified:
+        if response.subscribed:
             status_code = 200
             response.message = "success"
         else:
             status_code = 400
-            response.message = "failure"
+            response.message = "incorrect password"
     except LookupError as e:
         status_code = 400
         response.message = "user not found"
