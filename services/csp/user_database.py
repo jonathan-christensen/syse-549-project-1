@@ -89,23 +89,21 @@ class UserDatabase:
         return user.subscribed
 
     def subscribe(self, email, token):
-        user = self.get_user(email)
-
-        if user is None:
-            raise LookupError(f"No user found for email: '{email}'")
-
-        if user.subscribed:
-            raise ValueError(f"User '{email}' is already subscribed")
-
-        if token != user.subscriber_token:
-            raise PermissionError(f"Invalid subscriber token for user '{email}'")
-
         with self._connect() as conn:
-            conn.execute(
-                "UPDATE users SET subscribed = TRUE WHERE email = ?",
-                (email,)
+            cur = conn.execute(
+                """
+                UPDATE users SET subscribed = TRUE
+                WHERE email = ? AND subscribed = FALSE AND subscriber_token = ?
+                """,
+                (email, token),
             )
-        
+            if cur.rowcount == 0:
+                user = self.get_user(email)
+                if user is None:
+                    raise LookupError(...)
+                if user.subscribed:
+                    raise ValueError(...)
+                raise PermissionError(...)
         return True
 
     def verify(self, email, plaintext):
