@@ -16,8 +16,8 @@ HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("SUBJECT_PORT"))
 CSP_URL =  HOST + ":" + os.getenv("CSP_PORT")
 
-def become_applicant() -> ApplicantResponse:
-    request = ApplicantRequest(email="test")
+def become_applicant(email):
+    request = ApplicantRequest(email=email)
 
     response = requests.post(
         CSP_URL + "/apply",
@@ -56,11 +56,15 @@ async def transcript():
 
 @app.post("/reset")
 async def reset():
+    events.reset()
     return JSONResponse(status_code=200, content={"status": "ok"})
 
 @app.post("/run")
 async def run(body: RunRequest):
-    token = become_applicant()
+    email = body.run_id
+
+    token = become_applicant(email)
+    become_subscriber(email, token)
 
     # event = Event(
     #     seq=1,

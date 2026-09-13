@@ -30,7 +30,7 @@ class UserDatabase:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     email TEXT PRIMARY KEY,
-                    password_hash TEXT,
+                    password_hash TEXT NOT NULL,
                     subscriber_token TEXT NOT NULL,
                     subscribed BOOLEAN
                 )
@@ -42,9 +42,12 @@ class UserDatabase:
     def reset(self):
         self._init_db(reset=True)
 
-    def add_user(self, email, subscriber_token):
+    # User can be overwritten if they are not already subscribed
+    def add_user(self, email, plaintext, subscriber_token):
         with self._connect() as conn:
-            conn.execute(
+            password_hash = bcrypt.hashpw(plaintext.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+            cur = conn.execute(
                 """
                 INSERT INTO users (email, password_hash, subscriber_token, subscribed)
                 VALUES (?, ?, ?, ?)
@@ -54,8 +57,11 @@ class UserDatabase:
                     subscribed = excluded.subscribed
                 WHERE users.subscribed = FALSE
                 """,
-                (email, None, subscriber_token, False),
+                (email, password_hash, subscriber_token, False),
             )
+
+            if cur.rowcount == 0:
+                raise ValueError(f"User '{email}' is already subscribed")
 
     def get_user(self, email: str) -> Optional[User]:
         with self._connect() as conn:
@@ -74,17 +80,25 @@ class UserDatabase:
                     subscribed=row[3]
                 )
 
-    def subscribe_user(self, email, token):
+    def is_subscribed(self, email):
         user = self.get_user(email)
 
         if(user is None):
             return False
 
+        return user.subscribed
+
+    def subscribe(self, email, token):
+        user = self.get_user(email)
+
+        if user is None:
+            raise LookupError(f"No user found for email: '{email}'")
+
         if user.subscribed:
-            return False
-        
-        if(token != user.subscriber_token):
-            return False
+            raise ValueError(f"User '{email}' is already subscribed")
+
+        if token != user.subscriber_token:
+            raise PermissionError(f"Invalid subscriber token for user '{email}'")
 
         with self._connect() as conn:
             conn.execute(
@@ -94,16 +108,22 @@ class UserDatabase:
         
         return True
 
-    def verify_login(self, email, password_hash):
+    def verify(self, email, plaintext):
         user = self.get_user(email)
 
         if user is None:
-            return False
-        
-        if bcrypt.checkpw(password_hash, user.password_hash):
-            return True
-        
-        return False
+            raise LookupError(f"No user found for email: '{email}'")
 
-    def user_exists(self, email) -> bool:
-        return self.get_user(email) is not None
+        if not user.subscribed:
+            raise ValueError(f"User '{email}' is not subscribed")
+
+        stored_hash = user.password_hash
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode('utf-8')
+
+        verified = bcrypt.checkpw(plaintext.encode('utf-8'), stored_hash)
+
+        if verified:
+            return True
+        else:
+            return False

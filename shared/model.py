@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Any
+from typing import List, Any, Optional
 from pydantic import BaseModel
 
 # Run
@@ -17,17 +17,24 @@ class RunResponse(BaseModel):
 # Applicant
 class ApplicantRequest(BaseModel):
     email: str
+    plaintext: str
 
 class ApplicantResponse(BaseModel):
-    token: str
+    token: Optional[str] = None
+    message: str
 
 # Subscriber
-class SubscriberRequest(BaseModel):
-    email: str
-    token: str
-
 class SubscriberResponse(BaseModel):
-    status: str
+    message: str
+
+# Verifier
+class VerifierRequest(BaseModel):
+    email: str
+    plaintext: str
+
+class VerifierResponse(BaseModel):
+    verified: bool
+    message: str
 
 # Event
 class Event(BaseModel):
