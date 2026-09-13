@@ -6,7 +6,7 @@ import uvicorn
 import requests
 from dotenv import load_dotenv
 
-from shared.model import RunRequest, RunResponse, Event, EventResponse, SubscriberRequest, SubscriberResponse, ApplicantRequest, ApplicantResponse
+from shared.model import RunRequest, RunResponse, EventResponse, SubscriberResponse, ApplicantRequest, ApplicantResponse
 
 load_dotenv()
 
@@ -27,12 +27,10 @@ def become_applicant(email):
 
     return ApplicantResponse(**response.json())
 
-def become_subscriber(token) -> SubscriberResponse:
-    request = SubscriberRequest(token=token)
-
-    response = requests.post(
+def become_subscriber(email, token) -> SubscriberResponse:
+    response = requests.get(
         CSP_URL + "/subscribe",
-        json=request.model_dump(),
+        params={"email": email, "token": token}
     )
     response.raise_for_status()
 
