@@ -12,8 +12,8 @@ Ports are `LAB1_PORT_BLOCK` plus a fixed offset, so one setting moves all four.
 
 | Service | Offset | Default port | Owner | Status |
 |---|---|---|---|---|
-| Subject agent | +0 | 4100 | Partner A | not implemented yet |
-| CSP | +1 | 4101 | Partner A | not implemented yet |
+| Subject agent | +0 | 4100 | Partner A | partial |
+| CSP | +1 | 4101 | Partner A | implemented |
 | Verifier | +2 | 4102 | Partner B | implemented |
 | Relying Party | +3 | 4103 | Partner B | implemented |
 
@@ -34,6 +34,8 @@ Then start each service in its own terminal (or under `tmux`/`nohup` on the
 server — no sudo, everything from your home directory):
 
 ```bash
+python3 -m services.subject      # port block + 0
+python3 -m services.csp          # port block + 1
 python3 -m services.verifier     # port block + 2
 python3 -m services.rp           # port block + 3
 ```
