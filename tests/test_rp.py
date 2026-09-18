@@ -77,6 +77,9 @@ class RelyingPartyTestCase(unittest.TestCase):
         step3 = [e for e in self.rp.transcript(RUN_ID) if e["step"] == 3]
         self.assertEqual([e["outcome"] for e in step3], ["success"])
         self.assertEqual(step3[0]["step_name"], "authentication_request")
+        # The probe reads the role progression off the `actor` field
+        # (check H-ROL), and this event is the Subscriber half of it.
+        self.assertEqual(step3[0]["actor"], "subscriber")
 
     def test_a_verified_assertion_produces_a_session_and_the_resource(self):
         assertion = self.enrol_and_authenticate()
@@ -240,3 +243,42 @@ class RelyingPartyTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BasePathTestCase(unittest.TestCase):
+    """The RP behind a reverse proxy that keeps the path prefix.
+
+    nginx `proxy_pass` without a trailing slash forwards the whole path, so a
+    service reached at /team/rp/ sees /team/rp/health, not /health.
+    """
+
+    def setUp(self) -> None:
+        apply_test_env()
+        os.environ["LAB1_RP_BASE_PATH"] = "/hsundareswaran/rp/"
+        self.addCleanup(os.environ.pop, "LAB1_RP_BASE_PATH", None)
+        from services.rp.app import RelyingParty
+
+        self.rp = Harness(RelyingParty())
+        self.addCleanup(self.rp.close)
+
+    def test_the_contract_endpoints_answer_under_the_prefix(self):
+        status, body = self.rp.request("GET", "/hsundareswaran/rp/health")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["service"], "rp")
+        # The public resource, with and without the trailing slash.
+        self.assertEqual(self.rp.request("GET", "/hsundareswaran/rp/")[0], 200)
+        self.assertEqual(self.rp.request("GET", "/hsundareswaran/rp")[0], 200)
+
+    def test_the_protected_resource_still_challenges_under_the_prefix(self):
+        # A proxied deployment must not quietly lose the 401: RFC 9110 15.5.2
+        # applies to the response the client sees, whatever path it arrived on.
+        status, headers, _ = self.rp.raw("GET", "/hsundareswaran/rp/protected")
+        self.assertEqual(status, 401)
+        self.assertIn("www-authenticate", headers)
+
+    def test_the_unprefixed_path_still_answers_on_loopback(self):
+        # Deliberate: the prefix is what the proxy adds for outside callers,
+        # while service-to-service calls stay on loopback and address the plain
+        # path. Refusing the bare path here would break the RP's own
+        # introspection call to the Verifier and every local health check.
+        self.assertEqual(self.rp.request("GET", "/health")[1]["service"], "rp")

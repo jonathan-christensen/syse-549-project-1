@@ -66,7 +66,7 @@ class VerifierTestCase(unittest.TestCase):
         events = self.verifier.transcript(RUN_ID)
         self.assertEqual([e["step"] for e in events], [2])
         self.assertEqual(events[0]["outcome"], "success")
-        self.assertEqual(events[0]["step_name"], "authenticator_enrollment_and_issuance")
+        self.assertEqual(events[0]["step_name"], "authenticator_enrollment_issuance")
 
     def test_correct_authenticator_output_produces_an_assertion(self):
         self.bind()

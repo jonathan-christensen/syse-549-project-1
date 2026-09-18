@@ -1,6 +1,12 @@
-from datetime import datetime, timezone
-from typing import List, Any, Optional
-from pydantic import BaseModel, Field, SecretStr
+"""Request and response shapes for the FastAPI services.
+
+The transcript event shape is deliberately NOT here: it lives once, in
+shared/transcript.py, with the writer that produces it and the one UTC
+timestamp helper all four services use. Two definitions of the frozen event
+shape is exactly the drift PROJECT_WORKFLOW.md section 10 warns about.
+"""
+
+from pydantic import BaseModel
 
 # Run
 class RunRequest(BaseModel):
@@ -16,48 +22,20 @@ class RunResponse(BaseModel):
 
 # Applicant
 class ApplicantRequest(BaseModel):
+    # run_id ties every transcript event to one probe run; canary is the
+    # authenticator secret the harness supplies and expects us to use.
+    run_id: str
     email: str
-    plaintext: SecretStr
+    canary: str
 
 class ApplicantResponse(BaseModel):
-    token: Optional[str] = None
-    message: str
+    token: str
 
 # Subscriber
-class SubscriberResponse(BaseModel):
-    message: str
-
-# Verifier
-class VerifierRequest(BaseModel):
-    email: str
-    plaintext: SecretStr
-
-class VerifierResponse(BaseModel):
-    subscribed: bool
-    message: str
-
-# Event
-class Event(BaseModel):
-    seq: int
+class SubscriberRequest(BaseModel):
     run_id: str
-    step: int
-    step_name: str
-    actor: str
-    peer: str
-    outcome: str
-    ts: str
-    detail: Any
+    email: str
+    token: str
 
-    @staticmethod
-    def get_timestamp() -> str:
-        dt = datetime.now(timezone.utc)
-        return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f"{dt.microsecond // 1000:03d}Z"
-
-class EventResponse(BaseModel):
-    events: List[Event] = []
-
-    def append(self, event: Event):
-        self.events.append(event)
-
-    def reset(self):
-        self.events = []
+class SubscriberResponse(BaseModel):
+    status: str

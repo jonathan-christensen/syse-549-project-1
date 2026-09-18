@@ -19,3 +19,6 @@ __pycache__/
 
 # Packaged submission
 lab1-*.zip
+
+# Service pidfiles and logs from scripts/run_all.sh
+run/

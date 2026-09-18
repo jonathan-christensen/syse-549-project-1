@@ -33,7 +33,11 @@ from shared.pwhash import burn_equivalent_work, is_record, verify_secret
 from shared.ratelimit import RateLimiter
 from shared.service import JsonService, Request, Response
 from shared.timeutil import iso_from_epoch
-from shared.validate import valid_authenticator_output, valid_handle, valid_identifier
+from shared.validate import (
+    normalize_identifier,
+    valid_authenticator_output,
+    valid_handle,
+)
 
 # One challenge, used on every 401 this service emits (RFC 9110 section 15.5.2:
 # a 401 response must carry a WWW-Authenticate header).
@@ -98,9 +102,9 @@ class Verifier(JsonService):
             )
             return 401, {"error": "unauthorized"}, {"WWW-Authenticate": CHALLENGE}
 
-        identifier = request.field("identifier")
+        identifier = normalize_identifier(request.field("identifier"))
         record = request.field("verifier_record")
-        if not valid_identifier(identifier) or not is_record(record):
+        if identifier is None or not is_record(record):
             self.transcript.record(
                 run_id=run_id, step=2, actor="csp", peer="verifier", outcome="denied",
                 detail="binding rejected: malformed identifier or record",
@@ -130,7 +134,7 @@ class Verifier(JsonService):
     def handle_authenticate(self, request: Request) -> Response:
         """Check the presented authenticator output against the bound record."""
         run_id = request.run_id
-        identifier = request.field("identifier")
+        identifier = normalize_identifier(request.field("identifier"))
         output = request.field("authenticator_output")
 
         allowed, retry_after = self.limiter.check(request.client_ip)
@@ -145,7 +149,7 @@ class Verifier(JsonService):
                 "WWW-Authenticate": CHALLENGE,
             }
 
-        if not valid_identifier(identifier) or not valid_authenticator_output(output):
+        if identifier is None or not valid_authenticator_output(output):
             # Same body, same status as a wrong secret: a malformed request
             # must not become an oracle either.
             self.transcript.record(

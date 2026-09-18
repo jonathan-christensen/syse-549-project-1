@@ -30,7 +30,7 @@ change them rather than discover them in integration.
 | Quiet denials | One status and one body for every authentication failure, plus equal work on the unknown-identifier path (`burn_equivalent_work`) | A failure must not reveal whether the account existed — including through the clock. Measured: 46.2 ms for an unknown identifier against 48.1 ms for a wrong secret |
 | Rate limiting | 10 attempts per client address per 60s window on `POST /authenticate`, counted per address and cleared on success | Keyed on the address rather than the identifier so that knowing a subscriber's identifier cannot be used to lock them out. Loose on purpose: every legitimate request in this deployment comes from the same host as an attacker's would, so a tight limit locks the lab out of itself. See `docs/analysis.md` — this control is weak here and we say so rather than claiming otherwise |
 | Session credentials | `secrets.token_urlsafe(32)`, expiring, revocable, and pinned to the address they were issued to (`LAB1_RP_PIN_SESSION_TO_CLIENT`) | A cryptographic random source is required; pinning costs a stolen bearer credential most of its value. The setting exists because a client whose address changes mid-session would be logged out |
-| Transcript `step_name` values | `identity_proofing_and_enrollment`, `authenticator_enrollment_and_issuance`, `authentication_request`, `authentication_process`, `authenticated_session` | Only the step numbers are fixed by the contract. The five strings live in one table (`shared/transcript.py`) so all four services cannot drift apart |
+| Transcript `step_name` values | `identity_proofing_and_enrollment`, `authenticator_enrollment_issuance`, `authentication_request`, `authentication_process`, `authenticated_session` | Only the step numbers are fixed by the contract. These are the five strings `conformance_probe.py` itself uses, so we match them even though the probe does not check them. They live in one table (`shared/transcript.py`) so all four services cannot drift apart |
 | Transcript `detail` | Literal strings only, never a request field | Log decisions, never inputs. Enforced two ways: the writer rejects a detail that does not look like a plain description, and `tests/test_no_secret_logging.py` fails the build if any `detail=` is built from a runtime value |
 
 ## Cross-partner interfaces Partner A needs
@@ -51,3 +51,103 @@ change them rather than discover them in integration.
 
 If any of these has to change, it changes in `PROJECT_WORKFLOW.md` §5 or here
 first, then in code — §13's integration rule.
+
+## What `POST /run` has to do, scenario by scenario
+
+Measured with `conformance_probe.py` against all four services running: 12 of
+24 checks pass today. Every one of the eleven failures — all seven `H-*` and
+all four `N-*` — is the same failure, that `POST /run` on the Subject answers
+`404`. Partner B's two services already answer every call below; this is the
+sequence that closes the gap.
+
+Thread the `run_id` the harness gave you into **every** call and every
+transcript event, in all four services. `canary` is the authenticator secret —
+use it, never log it.
+
+**`happy_path` → `success`**
+
+1. CSP creates the subscriber account. Record step 1 on the **CSP** transcript
+   with `actor: "applicant"` — the probe reads the Applicant → Subscriber →
+   Claimant progression off the `actor` field (`H-ROL`), and step 1 is the only
+   place `applicant` appears.
+2. CSP hashes the canary with `shared.pwhash.hash_secret(canary)` and `POST`s
+   it to the Verifier's `/binding` with the `X-Lab1-Binding-Token` header.
+   Record step 2 on the **CSP** transcript (`H-ST2` looks there, not at the
+   Verifier).
+3. Subject `GET`s the RP's `/protected` with `X-Run-Id` **and no session**, and
+   expects `401`. This has to happen *before* authentication: the RP records
+   step 3 here, and `H-ORD` sorts every event by timestamp, so a `/protected`
+   call made only at the end puts step 3 after step 5 and fails the check.
+4. Subject `POST`s the Verifier's `/authenticate` with
+   `{run_id, identifier, authenticator_output: canary}` and gets back
+   `{"assertion": ...}`. The Verifier records step 4 with `actor: "claimant"`.
+5. Subject `POST`s the RP's `/session` with `{run_id, assertion}` and gets back
+   `{"session": ...}`. The RP validates the assertion with the Verifier and
+   records step 5.
+6. Subject `GET`s `/protected` again with
+   `Authorization: Lab1-Session <session>` and expects `200`.
+7. Answer `{"run_id", "scenario", "outcome": "success", "detail": "protected resource returned HTTP 200"}`.
+
+**`wrong_authenticator` → `denied`** — steps 1–3 as above, then authenticate
+with anything other than the canary. The Verifier answers `401`; stop there and
+report `denied`. Never call `/session`, so no step 5 succeeds.
+
+**`unenrolled_claimant` → `denied`** — skip enrollment entirely and authenticate
+with an identifier that was never bound. Same `401`, byte for byte, as a wrong
+authenticator: that sameness is the point.
+
+**`replay` → `denied`** — run the happy path to a working session, `POST` the
+RP's `/logout` with `Authorization: Lab1-Session <session>`, then `GET`
+`/protected` with that same credential again and expect `401`. A successful
+step 5 earlier in this run is expected and allowed.
+
+**`skip_verifier` → `denied`** — enroll and bind, then go straight to the RP's
+`/session` with a self-made assertion (or an `identifier` and no assertion) and
+never call the Verifier. The RP answers `401` because introspection fails;
+report `denied`.
+
+### It is written, and tested
+
+`services/subject/flow.py` implements all five, standard library only, with no
+FastAPI or pydantic dependency so it can be tested directly. `POST /run` then
+reduces to:
+
+```python
+from shared.transcript import Transcript
+from services.subject.flow import Flow
+
+transcript = Transcript()          # module level, shared with /transcript and /reset
+flow = Flow(transcript)            # peers resolved from .env, on loopback
+
+@app.post("/run")
+async def run(body: RunRequest):
+    return JSONResponse(status_code=200,
+                        content=flow.run(body.run_id, body.scenario, body.canary))
+```
+
+`GET /transcript` becomes `{"events": transcript.events()}` and `POST /reset`
+calls `transcript.reset()`, so all four services use one writer and one
+timestamp helper.
+
+`tests/test_subject_flow.py` drives it against the real Verifier and RP with a
+stand-in CSP that meets the enrollment contract above, and asserts what the
+probe asserts: all five steps present at the service that owns each, ascending
+by timestamp, the role progression in order, the canary absent from every
+transcript, and each of the four negatives denied with no successful step 5.
+
+**What the CSP still owes**, and the flow assumes:
+
+| Endpoint | Request | Must do |
+|---|---|---|
+| `POST /apply` | `{run_id, email, canary}` | store `shared.pwhash.hash_secret(canary)`, record **step 1 with `actor: "applicant"`**, return `{token}` |
+| `POST /subscribe` | `{run_id, email, token}` | mark subscribed, `POST` the stored record to the Verifier's `/binding` with `X-Lab1-Binding-Token`, record **step 2** |
+| `GET /transcript` | — | `{"events": [...]}` — currently returns `Event()`, which raises and answers 500 |
+
+### On timestamp precision
+
+`shared/timeutil.py` emits **microseconds**, not milliseconds. The probe sorts
+events by the timestamp string alone, so two events a fraction of a millisecond
+apart - the CSP recording step 2 and the Subject recording step 3 - tie, and
+the tie is broken by the order the probe collected the transcripts in, which is
+not chronological. At millisecond precision that inversion failed `H-ORD` on
+most runs; it was caught by `tests/test_subject_flow.py`, not by reasoning.

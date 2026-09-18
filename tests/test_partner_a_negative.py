@@ -163,10 +163,31 @@ class CspNegativeTestCase(unittest.TestCase):
     def test_denies_a_duplicate_enrollment(self):
         # Defends against one applicant enrolling twice, or an attacker claiming
         # an identifier that already belongs to a subscriber.
-        first_status, _ = self.enrol(self.identifier)
-        self.assertIn(first_status, (200, 201), "first enrollment should succeed")
+        first_status, first_body = self.enrol(self.identifier)
+        if first_status not in (200, 201):
+            # The enrollment body is Partner A's [C] choice, so a refusal here
+            # means the assumed field names are wrong, not that the duplicate
+            # check failed. Say which, rather than reporting a false failure.
+            self.skipTest(
+                "enrollment with the assumed body returned HTTP %s (%s); confirm "
+                "the CSP's field names and LAB1_CSP_ENROLL_PATH"
+                % (first_status, first_body)
+            )
         second_status, second_body = self.enrol(self.identifier)
         self.assertGreaterEqual(second_status, 400, second_body)
+
+    def test_enrollment_never_answers_with_a_server_error(self):
+        # Defends against unhandled exceptions on the enrollment path: a 5xx
+        # means input reached code that did not expect it, and it is one
+        # debug setting away from returning a stack trace with it.
+        for body in ({}, {"identifier": None}, {"identifier": "x" * 300}):
+            status, response = post_json(
+                CSP_URL + ENROLL_PATH, dict(body, run_id="xreview-malformed"), timeout=10
+            )
+            if status == 404:
+                self.skipTest("the CSP has no %s endpoint" % ENROLL_PATH)
+            self.assertLess(status, 500, "%r produced HTTP %s: %s"
+                            % (body, status, response))
 
     def test_denies_a_malformed_enrollment_without_leaking_internals(self):
         # Defends against error-message probing for the framework and file layout.

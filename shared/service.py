@@ -81,6 +81,14 @@ class JsonService:
     def __init__(self) -> None:
         self.transcript = Transcript()
         self.team = config.team_name()
+        # When the service is reached through a reverse proxy that keeps the
+        # path prefix (nginx `proxy_pass` without a trailing slash does), the
+        # prefix arrives on every request and has to come off before routing.
+        # Without this the service 404s everything and the page looks broken
+        # rather than absent, which is the commonest way a proxied app fails.
+        self.base_path = _normalise_base(
+            config.setting("LAB1_%s_BASE_PATH" % self.name.upper(), "LAB1_BASE_PATH")
+        )
         self._routes: Dict[Tuple[str, str], Handler] = {}
         self._lock = threading.Lock()
         self.route("GET", "/health", self._health)
@@ -150,12 +158,15 @@ class JsonService:
 
             def _dispatch(self, method: str) -> None:
                 parsed = urlparse(self.path)
+                path = parsed.path
+                if service.base_path and path.startswith(service.base_path):
+                    path = path[len(service.base_path):] or "/"
                 query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
                 headers = {k.lower(): v for k, v in self.headers.items()}
                 body, body_error = self._read_body()
                 request = Request(
                     method=method,
-                    path=parsed.path.rstrip("/") or "/",
+                    path=path.rstrip("/") or "/",
                     query=query,
                     headers=headers,
                     body=body,
@@ -216,6 +227,13 @@ class JsonService:
             pass
         finally:
             server.server_close()
+
+
+def _normalise_base(value: Optional[str]) -> str:
+    """`/team/verifier/` -> `/team/verifier`; anything empty -> ``."""
+    if not value:
+        return ""
+    return "/" + value.strip().strip("/")
 
 
 def _normalise(result: Any) -> Response:

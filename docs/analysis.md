@@ -119,6 +119,15 @@ knowledge-based authentication ("what was your first pet"), so a recovery flow
 would have to rest on something else — verify the prohibition's exact wording in
 the PDF before saying so on a slide.
 
+## 4b. The adversarial hour
+
+Thirteen probes against our own services, with what each returned, is in
+[`adversarial.md`](adversarial.md). The most interesting result was not a
+break: our first "timing leak" turned out to be our own rate limiter firing,
+and chasing that false positive produced the real finding — that per-address
+rate limiting is close to useless in a deployment where every legitimate
+request comes from the same host as an attacker's would.
+
 ## 5. Where the automated review was wrong
 
 The six-question review is in `docs/security-review.md`, with a paragraph

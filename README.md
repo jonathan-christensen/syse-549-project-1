@@ -10,34 +10,63 @@ Python 3.8+ and the standard library. Nothing to install, no sudo, no database.
 
 Ports are `LAB1_PORT_BLOCK` plus a fixed offset, so one setting moves all four.
 
-| Service | Offset | Default port | Owner | Status |
+| Service | Offset | Port | Owner | Status |
 |---|---|---|---|---|
-| Subject agent | +0 | 4100 | Partner A | partial |
-| CSP | +1 | 4101 | Partner A | implemented |
-| Verifier | +2 | 4102 | Partner B | implemented |
-| Relying Party | +3 | 4103 | Partner B | implemented |
+| Subject agent | +0 | 4100 | Partner A | `/health`, `/transcript`, `/reset` only — **`POST /run` is missing** |
+| CSP | +1 | 4101 | Partner A | `/health`, `/transcript`, `/reset` only — **no enrollment or binding yet** |
+| Verifier | +2 | 4102 | Partner B | complete |
+| Relying Party | +3 | 4103 | Partner B | complete |
 
-> **Before deploying:** the port block and team name here are placeholders. Claim
-> four consecutive ports in 4100–4199 on the Canvas discussion, then set
-> `LAB1_TEAM` and `LAB1_PORT_BLOCK` in `.env` and update the URLs in `team.json`.
+Measured with `conformance_probe.py` against all four running locally:
+**12 of 24 checks, 5.0/10**. Everything that does not need `POST /run` passes
+(all `S-*`, all `P-*`, all `X-*`); all seven `H-*` and all four `N-*` fail for
+the single reason that `POST /run` answers `404`, so no scenario ever executes.
+
+The remaining twelve were checked separately: driving the Verifier and RP
+through the sequence in [`docs/decisions.md`](docs/decisions.md#what-post-run-has-to-do-scenario-by-scenario)
+with a throwaway driver (not in this repo — the Subject agent is Partner A's to
+write) scores **24 of 24, 10/10**. So the gap is `POST /run` and the CSP's
+enrollment and binding, and nothing else.
+
+> **Before deploying:** team `hayagreeva-jonathan` has claimed **4100–4103** on
+> the Canvas discussion, and `team.json` and `.env.example` carry that block.
+> Two things still need doing on the server: confirm the range is actually
+> reachable from campus — the firewall rule in the server notes admits
+> `4000:4009` only — and set `HOST=0.0.0.0` in your `.env`, which currently
+> says `127.0.0.1`. Both are step 2.0 of
+> [`docs/deployment.md`](docs/deployment.md).
 
 ## Running it from a clean checkout
+
+Step by step, including the server and the live demo:
+**[`docs/deployment.md`](docs/deployment.md)**.
 
 ```bash
 git clone <this repo> && cd syse-549-project-1
 cp .env.example .env
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"   # once per token
 $EDITOR .env        # paste one token into each of the two token settings
+pip install -r requirements.txt   # Partner A's two services only
 ```
+
+One `.env` configures all four services: Partner A's read `TEAM`, `HOST` and
+`<SERVICE>_PORT`, and Partner B's read the same names when the `LAB1_`-prefixed
+form is unset. Partner B's services and the test suite need no packages at all.
 
 Then start each service in its own terminal (or under `tmux`/`nohup` on the
 server — no sudo, everything from your home directory):
 
 ```bash
-python3 -m services.subject      # port block + 0
-python3 -m services.csp          # port block + 1
-python3 -m services.verifier     # port block + 2
-python3 -m services.rp           # port block + 3
+python3 -m subject.main          # port block + 0   (Partner A)
+python3 -m csp.main              # port block + 1   (Partner A)
+python3 -m services.verifier     # port block + 2   (Partner B)
+python3 -m services.rp           # port block + 3   (Partner B)
+```
+
+Or start all four at once, one log per service under `run/`:
+
+```bash
+sh scripts/run_all.sh            # sh scripts/stop_all.sh to stop them
 ```
 
 Both bind `0.0.0.0` by default. A service bound to `127.0.0.1` works on the

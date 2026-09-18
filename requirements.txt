@@ -1,0 +1,9 @@
+# Partner A's services (subject, csp) are FastAPI applications.
+# Partner B's services (verifier, rp) and the whole test suite are standard
+# library only and need nothing from this file.
+fastapi
+uvicorn
+pydantic
+python-dotenv
+bcrypt
+requests

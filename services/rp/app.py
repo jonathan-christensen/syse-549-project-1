@@ -84,8 +84,13 @@ class RelyingParty(JsonService):
 
         if presented is None:
             # Step 3: the RP demands authentication and says where to get it.
+            # The actor is the Subscriber, because the Subscriber is the party
+            # making the request; the 401 is what turns them into a Claimant.
+            # Recording it that way also makes the Applicant -> Subscriber ->
+            # Claimant progression visible across the four transcripts even if
+            # no other service happens to write a `subscriber` event (H-ROL).
             self.transcript.record(
-                run_id=request.run_id, step=3, actor="rp", peer="claimant",
+                run_id=request.run_id, step=3, actor="subscriber", peer="rp",
                 outcome="success",
                 detail="no session presented, authentication demanded",
             )

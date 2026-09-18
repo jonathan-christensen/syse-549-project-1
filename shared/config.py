@@ -4,6 +4,11 @@ Two sources, in this order: the process environment (optionally seeded from a
 `.env` file that is never committed) and `team.json`, which holds only the
 team name and the four public endpoint URLs.
 
+Both partners' settings names work, so one `.env` drives all four services:
+`TEAM`/`HOST`/`SUBJECT_PORT` (Partner A's FastAPI services) are read as
+fallbacks wherever the `LAB1_`-prefixed name is unset. The prefixed name wins
+when both are present.
+
 Shared tokens have no default. A service that cannot find its token refuses to
 start rather than falling back to a value an attacker could read in this file.
 """
@@ -26,6 +31,20 @@ _ENV_LOADED = False
 
 class ConfigError(Exception):
     """Configuration is missing or malformed; the service must not start."""
+
+
+def setting(name: str, *aliases: str, default: Optional[str] = None) -> Optional[str]:
+    """First non-empty value among `name` and its aliases, else `default`.
+
+    The aliases are Partner A's unprefixed settings names. Keeping both readable
+    from one file is what lets the two halves of the lab share a single `.env`.
+    """
+    load_env_file()
+    for key in (name,) + aliases:
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    return default
 
 
 def load_env_file(path: str = ".env") -> None:
@@ -60,8 +79,9 @@ def load_team_config(path: str = "team.json") -> Dict[str, object]:
 
 
 def team_name() -> str:
-    load_env_file()
-    return os.environ.get("LAB1_TEAM") or str(load_team_config().get("team", "unset-team"))
+    return setting("LAB1_TEAM", "TEAM") or str(
+        load_team_config().get("team", "unset-team")
+    )
 
 
 def port_for(service: str) -> int:
@@ -69,18 +89,16 @@ def port_for(service: str) -> int:
     load_env_file()
     if service not in PORT_OFFSETS:
         raise ConfigError("unknown service %r" % (service,))
-    override = os.environ.get("LAB1_%s_PORT" % service.upper())
+    name = "LAB1_%s_PORT" % service.upper()
+    override = setting(name, "%s_PORT" % service.upper())
     if override:
-        return _as_port(override, "LAB1_%s_PORT" % service.upper())
-    block = _as_port(
-        os.environ.get("LAB1_PORT_BLOCK", str(DEFAULT_PORT_BLOCK)), "LAB1_PORT_BLOCK"
-    )
-    return block + PORT_OFFSETS[service]
+        return _as_port(override, name)
+    block = setting("LAB1_PORT_BLOCK", default=str(DEFAULT_PORT_BLOCK))
+    return _as_port(block, "LAB1_PORT_BLOCK") + PORT_OFFSETS[service]
 
 
 def bind_host() -> str:
-    load_env_file()
-    return os.environ.get("LAB1_BIND_HOST", DEFAULT_BIND_HOST)
+    return setting("LAB1_BIND_HOST", "HOST", default=DEFAULT_BIND_HOST)
 
 
 def endpoint_for(service: str, config: Optional[Dict[str, object]] = None) -> str:
@@ -88,7 +106,7 @@ def endpoint_for(service: str, config: Optional[Dict[str, object]] = None) -> st
     load_env_file()
     if service not in SERVICES:
         raise ConfigError("unknown service %r" % (service,))
-    override = os.environ.get("LAB1_%s_URL" % service.upper())
+    override = setting("LAB1_%s_URL" % service.upper(), "%s_URL" % service.upper())
     if override:
         return override.rstrip("/")
     endpoints = (config or load_team_config()).get("endpoints", {})
@@ -108,7 +126,7 @@ def internal_endpoint_for(service: str) -> str:
     load_env_file()
     if service not in SERVICES:
         raise ConfigError("unknown service %r" % (service,))
-    override = os.environ.get("LAB1_%s_URL" % service.upper())
+    override = setting("LAB1_%s_URL" % service.upper(), "%s_URL" % service.upper())
     if override:
         return override.rstrip("/")
     return "http://127.0.0.1:%d" % port_for(service)
@@ -116,8 +134,7 @@ def internal_endpoint_for(service: str) -> str:
 
 def require_secret(name: str) -> str:
     """Read a shared token, or refuse to start."""
-    load_env_file()
-    value = os.environ.get(name, "").strip()
+    value = setting(name, name.replace("LAB1_", ""), default="")
     if len(value) < 16:
         raise ConfigError(
             "%s is missing or too short. Copy .env.example to .env and fill it in "
@@ -127,9 +144,8 @@ def require_secret(name: str) -> str:
 
 
 def int_setting(name: str, default: int, *, minimum: int = 1) -> int:
-    load_env_file()
-    raw = os.environ.get(name)
-    if raw is None or raw == "":
+    raw = setting(name, name.replace("LAB1_", ""))
+    if raw is None:
         return default
     try:
         value = int(raw)
@@ -141,11 +157,10 @@ def int_setting(name: str, default: int, *, minimum: int = 1) -> int:
 
 
 def bool_setting(name: str, default: bool) -> bool:
-    load_env_file()
-    raw = os.environ.get(name)
-    if raw is None or raw == "":
+    raw = setting(name, name.replace("LAB1_", ""))
+    if raw is None:
         return default
-    return raw.strip().lower() in ("1", "true", "yes", "on")
+    return raw.lower() in ("1", "true", "yes", "on")
 
 
 def _as_port(raw: str, name: str) -> int:

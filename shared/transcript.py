@@ -20,7 +20,7 @@ from .timeutil import now_iso
 # services, so they live here and nowhere else.
 STEP_NAMES = {
     1: "identity_proofing_and_enrollment",
-    2: "authenticator_enrollment_and_issuance",
+    2: "authenticator_enrollment_issuance",
     3: "authentication_request",
     4: "authentication_process",
     5: "authenticated_session",
