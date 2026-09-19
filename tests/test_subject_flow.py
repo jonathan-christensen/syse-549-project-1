@@ -1,8 +1,9 @@
 """The five scenarios, driven against the real Verifier and Relying Party.
 
 The CSP here is a stand-in that implements the enrollment contract in
-docs/decisions.md and nothing else: `POST /apply` takes the canary and returns
-a token, `POST /subscribe` marks the account subscribed and pushes the binding
+docs/decisions.md and nothing else: `POST /apply` takes `plaintext` (the
+harness's canary, for this scripted flow) and returns a token, `POST
+/subscribe` marks the account subscribed and pushes the binding
 record to the Verifier. Partner A's CSP is a FastAPI application and cannot be
 imported without its dependencies, so what these tests pin down is that the
 flow is correct *given* a CSP that meets the contract.
@@ -40,8 +41,8 @@ class StubCsp(JsonService):
         import secrets
 
         identifier = normalize_identifier(request.field("email"))
-        canary = request.field("canary")
-        if identifier is None or not isinstance(canary, str) or not canary:
+        plaintext = request.field("plaintext")
+        if identifier is None or not isinstance(plaintext, str) or not plaintext:
             return 400, {"error": "invalid_request"}, {}
         if identifier in self.accounts and self.accounts[identifier]["subscribed"]:
             return 409, {"error": "already_enrolled"}, {}
@@ -49,7 +50,7 @@ class StubCsp(JsonService):
         # The authenticator secret is hashed here and never stored in the clear.
         self.accounts[identifier] = {
             "token": token,
-            "record": hash_secret(canary),
+            "record": hash_secret(plaintext),
             "subscribed": False,
         }
         self.transcript.record(

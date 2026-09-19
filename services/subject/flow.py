@@ -147,7 +147,9 @@ class Flow:
         )
         _, body = post_json(
             self.csp_url + "/apply",
-            {"run_id": run_id, "email": identifier, "canary": canary},
+            # The CSP's own field is named "plaintext" - a real password for a
+            # human applicant, the harness's canary for this scripted run.
+            {"run_id": run_id, "email": identifier, "plaintext": canary},
         )
         token = body.get("token")
         if not token:

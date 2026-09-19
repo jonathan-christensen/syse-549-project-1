@@ -26,7 +26,6 @@ SERVICE = "subject"
 TEAM = config.team_name()
 HOST = config.bind_host()
 PORT = config.port_for(SERVICE)
-RELOAD = config.bool_setting("LAB1_UVICORN_RELOAD", False)
 
 # One writer, one timestamp helper, shared with the other three services.
 transcript = Transcript()
@@ -75,5 +74,4 @@ if __name__ == "__main__":
         "services.subject.main:app",
         host=HOST,
         port=PORT,
-        reload=RELOAD
     )

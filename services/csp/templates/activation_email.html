@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activate Your Account</title>
+
+<style>
+  /* ============ RESET / BASE ============ */
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f7;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111827;
+  }
+
+  a {
+    color: #4f46e5;
+    text-decoration: none;
+  }
+
+  /* ============ LAYOUT ============ */
+  .page {
+    width: 100%;
+    padding: 40px 16px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 480px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ============ HEADER ============ */
+  .header {
+    background-color: #4f46e5;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .header .logo {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: bold;
+  }
+
+  /* ============ BODY ============ */
+  .content {
+    padding: 40px 32px;
+  }
+
+  .content h1 {
+    margin: 0 0 16px;
+    font-size: 22px;
+  }
+
+  .content p {
+    margin: 0 0 16px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #4b5563;
+  }
+
+  .content .small-text {
+    font-size: 13px;
+    text-align: center;
+    color: #9ca3af;
+  }
+
+  .content .link-fallback {
+    font-size: 13px;
+    word-break: break-all;
+    margin-bottom: 24px;
+  }
+
+  /* ============ BUTTON ============ */
+  .btn-wrap {
+    text-align: center;
+    margin: 48px 0;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffffff !important;
+    background-color: #4f46e5;
+    border-radius: 6px;
+  }
+
+  /* ============ FOOTER ============ */
+  .footer {
+    background-color: #f9fafb;
+    padding: 24px 32px;
+    text-align: center;
+  }
+
+  .footer p {
+    margin: 0;
+    font-size: 12px;
+    color: #9ca3af;
+    line-height: 1.6;
+  }
+</style>
+</head>
+
+<body>
+
+  <div class="page">
+    <div class="card">
+
+      <div class="header">
+        <span class="logo">SYSE 549</span>
+      </div>
+
+      <div class="content">
+        <h1>Confirm your email address</h1>
+        <p>Thank you for signing up for SYSE 549. Click the button below to activate your account.</p>
+
+        <div class="btn-wrap">
+          <a href="{{ACTIVATION_URL}}" class="btn">Activate</a>
+        </div>
+
+        <p class="small-text">If you did not create an account, you can safely ignore this email.</p>
+      </div>
+
+      <div class="footer">
+        <p>&copy; 2026 SYSE 549<br>430 N College Ave, Fort Collins, CO 80524</p>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

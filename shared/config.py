@@ -102,13 +102,26 @@ def bind_host() -> str:
 
 
 def endpoint_for(service: str, config: Optional[Dict[str, object]] = None) -> str:
-    """Base URL of a peer service: env override, else team.json, else localhost."""
+    """Base URL of a peer service: env override, else HOST, else team.json.
+
+    team.json's endpoints are the production hostname, and two of them reach a
+    human directly (the CSP's activation-email link, the RP's `authenticate_at`
+    hint) - which would point at production even when running on localhost,
+    except that HOST/LAB1_BIND_HOST is reused here too: a concrete host (not
+    the "0.0.0.0" bind-every-interface wildcard, which is never a dialable
+    address) means "use this host everywhere," binding and public URLs alike.
+    Production leaves HOST at the wildcard, so this falls through to
+    team.json there, same as before.
+    """
     load_env_file()
     if service not in SERVICES:
         raise ConfigError("unknown service %r" % (service,))
     override = setting("LAB1_%s_URL" % service.upper(), "%s_URL" % service.upper())
     if override:
         return override.rstrip("/")
+    host = bind_host()
+    if host not in ("0.0.0.0", "::", ""):
+        return "http://%s:%d" % (host, port_for(service))
     endpoints = (config or load_team_config()).get("endpoints", {})
     if isinstance(endpoints, dict) and endpoints.get(service):
         return str(endpoints[service]).rstrip("/")

@@ -22,11 +22,13 @@ class RunResponse(BaseModel):
 
 # Applicant
 class ApplicantRequest(BaseModel):
-    # run_id ties every transcript event to one probe run; canary is the
-    # authenticator secret the harness supplies and expects us to use.
+    # run_id ties every transcript event to one probe run. plaintext is the
+    # authenticator secret - a real password for a human applicant, or the
+    # harness's canary value for a probe/test run; either way it is hashed
+    # on arrival and never stored or logged in the clear.
     run_id: str
     email: str
-    canary: str
+    plaintext: str
 
 class ApplicantResponse(BaseModel):
     token: str

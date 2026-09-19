@@ -139,9 +139,10 @@ transcript, and each of the four negatives denied with no successful step 5.
 
 | Endpoint | Request | Must do |
 |---|---|---|
-| `POST /apply` | `{run_id, email, canary}` | store `shared.pwhash.hash_secret(canary)`, record **step 1 with `actor: "applicant"`**, return `{token}` |
+| `POST /apply` | `{run_id, email, plaintext}` | store `shared.pwhash.hash_secret(plaintext)`, record **step 1 with `actor: "applicant"`**, return `{token}`. `plaintext` is a real password for a human applicant, or the harness's canary for a scripted run. |
 | `POST /subscribe` | `{run_id, email, token}` | mark subscribed, `POST` the stored record to the Verifier's `/binding` with `X-Lab1-Binding-Token`, record **step 2** |
-| `GET /transcript` | — | `{"events": [...]}` — currently returns `Event()`, which raises and answers 500 |
+| `GET /activate` | query: `email, token` | human-facing equivalent of `/subscribe`, answers HTML instead of JSON |
+| `GET /transcript` | — | `{"events": [...]}` |
 
 ### On timestamp precision
 
