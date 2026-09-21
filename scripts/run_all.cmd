@@ -5,6 +5,10 @@ rem Windows equivalent of scripts\run_all.sh.
 rem
 rem   scripts\run_all.cmd            start every service
 rem   scripts\run_all.cmd verifier rp   start only the ones named
+rem   scripts\run_all.cmd subject csp verifier rp frontend   + the React UI
+rem
+rem "frontend" (frontend\) is opt-in, not in the default set: it is not part
+rem of the graded contract.
 
 set "ROOT=%~dp0.."
 cd /d "%ROOT%" || exit /b 1
@@ -58,6 +62,10 @@ goto :eof
 rem -- start_one: %1=service name ---------------------------------------------
 :start_one
 set "NAME=%~1"
+if /I "%NAME%"=="frontend" (
+    call :start_frontend
+    goto :eof
+)
 call :module_for "%NAME%"
 if "%MODULE%"=="" (
     echo   unknown service: %NAME%
@@ -108,9 +116,46 @@ if "%NEWPID%"=="" (
 echo   started %NAME% (pid %NEWPID%) -^> run\%NAME%.log
 goto :eof
 
+rem -- start_frontend: the React app under frontend\, not a python module ----
+:start_frontend
+set "PIDFILE=%RUNDIR%\frontend.pid"
+if exist "%PIDFILE%" (
+    set /p OLDPID=<"%PIDFILE%"
+    tasklist /FI "PID eq !OLDPID!" 2>nul | find "!OLDPID!" >nul
+    if not errorlevel 1 (
+        echo   frontend already running ^(pid !OLDPID!^)
+        goto :eof
+    )
+)
+
+if not exist "%ROOT%\frontend\node_modules" (
+    echo   frontend NOT started - run "npm install" in frontend\ first
+    goto :eof
+)
+
+set "LOG=%RUNDIR%\frontend.log"
+set "PYCMD=cmd /c npm run dev > %LOG% 2>&1"
+set "WMICOUT=%RUNDIR%\frontend.wmic.tmp"
+wmic process call create "%PYCMD%","%ROOT%\frontend" > "%WMICOUT%" 2>nul
+set "NEWPID="
+for /f "tokens=3" %%I in ('findstr /C:"ProcessId" "%WMICOUT%"') do set "NEWPID=%%I"
+set "NEWPID=%NEWPID:;=%"
+del "%WMICOUT%" >nul 2>nul
+if "%NEWPID%"=="" (
+    echo   frontend failed to start - see %LOG%
+    goto :eof
+)
+> "%PIDFILE%" echo %NEWPID%
+echo   started frontend (pid %NEWPID%) -^> run\frontend.log
+goto :eof
+
 rem -- check_health: %1=service name, increments FAILED on trouble -----------
 :check_health
 set "NAME=%~1"
+if /I "%NAME%"=="frontend" (
+    call :check_frontend
+    goto :eof
+)
 call :module_for "%NAME%"
 if "%MODULE%"=="" goto :eof
 
@@ -125,6 +170,20 @@ if errorlevel 1 (
     set /a FAILED+=1
 ) else (
     for /f "usebackq delims=" %%L in ("%OUT%") do echo   %NAME%   ok    %%L
+)
+del "%OUT%" >nul 2>nul
+goto :eof
+
+rem -- check_frontend: plain reachability, no /health JSON to match --------
+:check_frontend
+set "OUT=%RUNDIR%\frontend.health.tmp"
+python -c "import sys, urllib.request; urllib.request.urlopen('http://127.0.0.1:5173/', timeout=3); sys.exit(0)" > "%OUT%" 2>&1
+if errorlevel 1 (
+    echo   frontend DOWN
+    echo             see run\frontend.log
+    set /a FAILED+=1
+) else (
+    echo   frontend ok    http://127.0.0.1:5173
 )
 del "%OUT%" >nul 2>nul
 goto :eof

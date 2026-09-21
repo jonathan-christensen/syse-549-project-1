@@ -15,6 +15,7 @@ The CSP deliberately does NOT decide who is authenticated. That is the
 Verifier's job, and keeping it there is what the skip_verifier scenario tests.
 """
 
+import os
 from html import escape
 
 from fastapi import FastAPI
@@ -50,6 +51,15 @@ BINDING_TOKEN = config.require_secret("LAB1_CSP_BINDING_TOKEN")
 # The link mailed to an applicant has to resolve for them, not for us: the
 # bind host is 0.0.0.0 on the wire but means nothing in a browser.
 PUBLIC_URL = config.endpoint_for(SERVICE)
+# The frontend isn't one of the four graded services (shared/config.py's
+# SERVICES), so it has no port-block entry of its own - just Vite's fixed dev
+# port. Same host-resolution reasoning as PUBLIC_URL above: a concrete HOST
+# means "dial this everywhere", and 0.0.0.0 falls back to loopback since the
+# frontend never runs in production either.
+FRONTEND_URL = "http://%s:5173" % (HOST if HOST not in ("0.0.0.0", "::", "") else "127.0.0.1")
+ACTIVATION_PAGE_TEMPLATE_PATH = os.path.join(
+    os.path.dirname(__file__), "templates", "activation_page.html",
+)
 
 transcript = Transcript()
 
@@ -175,11 +185,15 @@ def subscribe(body: SubscriberRequest):
     )
 
 def _activation_page(title: str, message: str) -> str:
-    safe_title = escape(title)
+    # Styled HTML lives in templates/activation_page.html (same convention as
+    # email_service.py's activation_email.html) rather than built inline here.
+    with open(ACTIVATION_PAGE_TEMPLATE_PATH, "r", encoding="utf-8") as f:
+        template = f.read()
     return (
-        "<!doctype html><html><head><meta charset=\"utf-8\">"
-        "<title>%s</title></head><body><h1>%s</h1><p>%s</p></body></html>"
-        % (safe_title, safe_title, escape(message))
+        template
+        .replace("{{TITLE}}", escape(title))
+        .replace("{{MESSAGE}}", escape(message))
+        .replace("{{LOGIN_URL}}", escape(FRONTEND_URL + "/login"))
     )
 
 @app.get("/activate", response_class=HTMLResponse)
@@ -194,7 +208,7 @@ def activate(email: str, token: str):
     if result == "ok":
         return HTMLResponse(_activation_page(
             "Account activated",
-            "Your account is active. You can now sign in with your authenticator.",
+            "Your account is active. You can now log in with your email and password.",
         ))
     if result == "verifier_unreachable":
         return HTMLResponse(_activation_page(

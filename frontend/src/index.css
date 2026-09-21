@@ -1,0 +1,186 @@
+:root {
+  --blue: #007aff;
+  --bg: #f9fafb;
+  --text: #111827;
+  --muted: #4b5563;
+  --faint: #9ca3af;
+  --border: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg);
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+}
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  height: fit-content;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.header {
+  background-color: var(--blue);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.logo-badge {
+  width: 44px;
+  height: 44px;
+  background-color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--blue);
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  padding-left: 12px;
+  color: #fff;
+  font-size: 24px;
+}
+
+.content {
+  padding: 40px 32px;
+}
+
+.content h1 {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+.content p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+}
+
+.field input:focus {
+  outline: 2px solid var(--blue);
+  outline-offset: -1px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #fff;
+  background-color: var(--blue);
+  border: 0;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-link {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+
+.small-text {
+  font-size: 13px;
+  text-align: center;
+  color: var(--faint);
+  margin-top: 58px;
+}
+
+.banner {
+  padding: 12px 14px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.banner.success {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.banner.error {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.resource {
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 20px;
+  word-break: break-word;
+}
+
+.nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+}

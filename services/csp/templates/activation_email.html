@@ -7,47 +7,89 @@
 
 <style>
   /* ============ RESET / BASE ============ */
-  body {
-    margin: 0;
-    padding: 0;
-    background-color: #f4f4f7;
-    font-family: Arial, Helvetica, sans-serif;
-    color: #111827;
+  * {
+    box-sizing: border-box;
   }
 
+  table {
+    border-collapse: collapse;
+    border: 0;
+  }
+
+  td {
+    padding: 0;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 16px;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color: black;
+    background-color: #f9fafb;
+  }
+
+  /* Gmail strips CSS on <body>, so the same color is set again on .page below */
+
   a {
-    color: #4f46e5;
     text-decoration: none;
   }
 
   /* ============ LAYOUT ============ */
   .page {
     width: 100%;
+    background-color: #f9fafb;
+  }
+
+  .page-cell {
     padding: 40px 16px;
-    display: flex;
-    justify-content: center;
+    text-align: center;
   }
 
   .card {
     width: 100%;
     max-width: 480px;
-    background-color: #ffffff;
-    border-radius: 8px;
+    margin: 0 auto;
+    background-color: white;
     overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    text-align: left;
   }
 
   /* ============ HEADER ============ */
   .header {
-    background-color: #4f46e5;
+    background-color: #007aff;
     padding: 32px;
-    text-align: center;
   }
 
-  .header .logo {
-    color: #ffffff;
-    font-size: 22px;
+  .logo-badge {
+    width: 44px;
+    height: 44px;
+    background-color: white;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .logo-badge span {
+    display: inline-block;
+    color: #007aff;
+    font-size: 18px;
     font-weight: bold;
+    line-height: 44px;
+  }
+
+  .logo-text {
+    padding-left: 12px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .logo-text span {
+    color: white;
+    font-size: 24px;
   }
 
   /* ============ BODY ============ */
@@ -56,7 +98,7 @@
   }
 
   .content h1 {
-    margin: 0 0 16px;
+    margin: 0 0 14px;
     font-size: 22px;
   }
 
@@ -88,17 +130,15 @@
   .btn {
     display: inline-block;
     padding: 14px 32px;
-    font-size: 15px;
-    font-weight: bold;
-    color: #ffffff !important;
-    background-color: #4f46e5;
-    border-radius: 6px;
+    font-size: 14px;
+    color: white !important;
+    background-color: #007aff;
   }
 
   /* ============ FOOTER ============ */
   .footer {
-    background-color: #f9fafb;
-    padding: 24px 32px;
+    background-color: white;
+    padding: 36px 32px;
     text-align: center;
   }
 
@@ -113,30 +153,45 @@
 
 <body>
 
-  <div class="page">
-    <div class="card">
+  <table role="presentation" class="page">
+    <tr>
+      <td class="page-cell">
 
-      <div class="header">
-        <span class="logo">SYSE 549</span>
-      </div>
+        <table role="presentation" class="card">
+          <tr>
+            <td class="header">
+              <table role="presentation">
+                <tr>
+                  <td class="logo-badge"><span>549</span></td>
+                  <td class="logo-text"><span>SYSE 549 Drive</span></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-      <div class="content">
-        <h1>Confirm your email address</h1>
-        <p>Thank you for signing up for SYSE 549. Click the button below to activate your account.</p>
+          <tr>
+            <td class="content">
+              <h1>Confirm your email address</h1>
+              <p>Thank you for signing up for SYSE 549 Drive. Click the button below to activate your account.</p>
 
-        <div class="btn-wrap">
-          <a href="{{ACTIVATION_URL}}" class="btn">Activate</a>
-        </div>
+              <div class="btn-wrap">
+                <a href="{{ACTIVATION_URL}}" class="btn">Activate</a>
+              </div>
 
-        <p class="small-text">If you did not create an account, you can safely ignore this email.</p>
-      </div>
+              <p class="small-text">If you did not create an account, you can safely ignore this email.</p>
+            </td>
+          </tr>
 
-      <div class="footer">
-        <p>&copy; 2026 SYSE 549<br>430 N College Ave, Fort Collins, CO 80524</p>
-      </div>
+          <tr>
+            <td class="footer">
+              <p>SYSE 549 Drive<br>430 N College Ave, Fort Collins, CO 80524</p>
+            </td>
+          </tr>
+        </table>
 
-    </div>
-  </div>
+      </td>
+    </tr>
+  </table>
 
 </body>
 </html>

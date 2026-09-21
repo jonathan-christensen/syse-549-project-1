@@ -32,10 +32,6 @@ class EmailService:
         return bool(EMAIL_RE.match(email))
 
     def send_activation(self, email, token):
-        if email == "example@example.com":
-            logger.warning(f"Skipping activation email to '{email}': example email.")
-            return False
-
         if not self.valid_email(email):
             logger.warning(f"Skipping activation email to '{email}': invalid email.")
             return False
